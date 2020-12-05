@@ -50,7 +50,7 @@ func Worker(mapf func(string, string) []KeyValue,
 		}
 
 		log.Println("Assigned task info:")
-		log.Printf("ID: %d\nFilepath: %v\nStatus: %v\nType: %v\n", assignedTask.taskID, assignedTask.Filepath, assignedTask.Status, assignedTask.Type)
+		log.Printf("ID: %d\nFilepath: %v\nStatus: %v\nType: %v\n", assignedTask.TaskID, assignedTask.Filepath, assignedTask.Status, assignedTask.Type)
 
 		file, err := os.Open(assignedTask.Filepath)
 		if err != nil {
@@ -70,7 +70,7 @@ func Worker(mapf func(string, string) []KeyValue,
 				reduceTaskNum := ihash(keyValue.Key) % assignedTask.NReduce
 				file, ok := intermediateFiles[reduceTaskNum]
 				if !ok {
-					filename := fmt.Sprintf("mr-%d-%d", assignedTask.taskID, reduceTaskNum)
+					filename := fmt.Sprintf("mr-%d-%d", assignedTask.TaskID, reduceTaskNum)
 					file, err := os.Create(filename)
 					if err != nil {
 						log.Fatal(err)
