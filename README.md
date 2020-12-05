@@ -12,7 +12,7 @@ rm mr-out*
 
 Then in one terminal run the master:
 ```
-go run mrmaster.go pg-*.txt
+go run mrmaster.go text/pg-*.txt
 ```
 
 And in different terminals run the workers:
