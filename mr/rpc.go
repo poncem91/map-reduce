@@ -15,6 +15,7 @@ import (
 const (
 	MAP = "MAP"
 	REDUCE = "REDUCE"
+	NOT_STARTED = -1
 	IN_PROGRESS = 0
 	COMPLETE = 1
 )
@@ -29,7 +30,7 @@ type Task struct {
 	TimeAssigned time.Time
 	Type string
 	NReduce int
-	taskID int
+	TaskID int
 }
 
 // Cook up a unique-ish UNIX-domain socket name

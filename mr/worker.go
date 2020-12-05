@@ -45,9 +45,12 @@ func Worker(mapf func(string, string) []KeyValue,
 		}
 
 		if assignedTask.Status == COMPLETE {
-			log.Println("tasks have all been completed, quitting")
+			log.Println("tasks have all been completed")
 			break
 		}
+
+		log.Println("Assigned task info:")
+		log.Printf("ID: %d\nFilepath: %v\nStatus: %v\nType: %v\n", assignedTask.taskID, assignedTask.Filepath, assignedTask.Status, assignedTask.Type)
 
 		file, err := os.Open(assignedTask.Filepath)
 		if err != nil {
@@ -95,6 +98,7 @@ func AskForTask() (*Task, error) {
 	reply := Task{}
 
 	if call("Master.AssignTask", &args, &reply) {
+		log.Println("call to Master.AssignTask was successful")
 		return &reply, nil
 	} else {
 		return nil, errors.New("master couldn't assign task")

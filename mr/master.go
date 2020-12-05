@@ -60,8 +60,26 @@ func (m *Master) Done() bool {
 func MakeMaster(files []string, nReduce int) *Master {
 	m := Master{}
 
-	// Your code here.
+	m.nReduce = nReduce
+	m.mapTasks = make(map[int]*Task)
+	m.reduceTasks = make(map[int]*Task)
 
+	for id, file := range files {
+		mapTask := Task{}
+		mapTask.Type = MAP
+		mapTask.Filepath = file
+		mapTask.TaskID = id
+		mapTask.Status = NOT_STARTED
+		m.mapTasks[id] = &mapTask
+	}
+
+	for id:= 0; id < nReduce; id++ {
+		reduceTask := Task{}
+		reduceTask.Type = REDUCE
+		reduceTask.TaskID = id
+		reduceTask.Status = NOT_STARTED
+		m.reduceTasks[id] = &reduceTask
+	}
 
 	m.server()
 	return &m
