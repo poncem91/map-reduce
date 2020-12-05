@@ -20,5 +20,4 @@ mrtmp.*
 /main/pbc.go
 /main/pbd.go
 /main/viewd.go
-/main/*.txt
 /main/*.so
