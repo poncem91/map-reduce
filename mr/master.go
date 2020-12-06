@@ -15,25 +15,56 @@ type Master struct {
 	nReduce int
 	mapTasks map[int]*Task // key: taskID
 	reduceTasks map[int]*Task // key: taskID
+	stage string
 }
 
 // Your code here -- RPC handlers for the worker to call.
 func (m *Master) AssignTask(args *TaskArgs, reply *Task) error {
 	log.Println("Beginning ASSIGN TASK Process")
 
-	for _, task := range m.mapTasks {
-		if task.Status == NOT_STARTED {
-			task.TimeAssigned = time.Now()
-			task.Status = IN_PROGRESS
-			reply.TaskID = task.TaskID
-			reply.Filepath = task.Filepath
-			reply.TimeAssigned = task.TimeAssigned
-			reply.Status = task.Status
-			reply.Type = task.Type
-			reply.NReduce = task.NReduce
-			log.Printf("ASSIGNING TASK #%d TO WORKER\n", reply.TaskID)
-			return nil
+	if m.stage == MAP {
+		tasksRemaining := false
+		for _, task := range m.mapTasks {
+			if task.Status == NOT_STARTED {
+				tasksRemaining = true
+				task.TimeAssigned = time.Now()
+				task.Status = IN_PROGRESS
+				reply.TaskID = task.TaskID
+				reply.Filepath = task.Filepath
+				reply.TimeAssigned = task.TimeAssigned
+				reply.Status = task.Status
+				reply.Type = task.Type
+				reply.NReduce = task.NReduce
+				log.Printf("ASSIGNING TO WORKER: TASK #%d - Filepath: %v - Status: %v - Type: %v\n", reply.TaskID, reply.Filepath, reply.Status, reply.Type)
+				return nil
+			}
+			if !tasksRemaining {
+				m.stage = REDUCE
+			}
 		}
+	} else if m.stage == REDUCE {
+		tasksRemaining := false
+		for _, task := range m.reduceTasks {
+			if task.Status == NOT_STARTED {
+				tasksRemaining = true
+				task.TimeAssigned = time.Now()
+				task.Status = IN_PROGRESS
+				reply.TaskID = task.TaskID
+				reply.Filepath = task.Filepath
+				reply.TimeAssigned = task.TimeAssigned
+				reply.Status = task.Status
+				reply.Type = task.Type
+				reply.NReduce = task.NReduce
+				log.Printf("ASSIGNING TO WORKER: TASK #%d - Filepath: %v - Status: %v - Type: %v\n", reply.TaskID, reply.Filepath, reply.Status, reply.Type)
+				return nil
+			}
+		}
+		if !tasksRemaining {
+			m.stage = COMPLETE
+		}
+
+	} else if m.stage == COMPLETE {
+		reply.Status = COMPLETE
 	}
 	return nil
 }
@@ -77,6 +108,7 @@ func MakeMaster(files []string, nReduce int) *Master {
 	m := Master{}
 
 	m.nReduce = nReduce
+	m.stage = MAP
 	m.mapTasks = make(map[int]*Task)
 	m.reduceTasks = make(map[int]*Task)
 
