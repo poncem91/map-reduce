@@ -15,9 +15,9 @@ import (
 const (
 	MAP = "MAP"
 	REDUCE = "REDUCE"
-	NOT_STARTED = -1
-	IN_PROGRESS = 0
-	COMPLETE = 1
+	NOT_STARTED = "NOT_STARTED"
+	IN_PROGRESS = "IN_PROGRESS"
+	COMPLETE = "COMPLETE"
 )
 
 // Add your RPC definitions here.
@@ -26,7 +26,7 @@ type TaskArgs struct {
 
 type Task struct {
 	Filepath string
-	Status int
+	Status string
 	TimeAssigned time.Time
 	Type string
 	NReduce int

@@ -2,6 +2,7 @@ package mr
 
 import (
 	"log"
+	"time"
 )
 import "net"
 import "os"
@@ -18,7 +19,22 @@ type Master struct {
 
 // Your code here -- RPC handlers for the worker to call.
 func (m *Master) AssignTask(args *TaskArgs, reply *Task) error {
+	log.Println("Beginning ASSIGN TASK Process")
 
+	for _, task := range m.mapTasks {
+		if task.Status == NOT_STARTED {
+			task.TimeAssigned = time.Now()
+			task.Status = IN_PROGRESS
+			reply.TaskID = task.TaskID
+			reply.Filepath = task.Filepath
+			reply.TimeAssigned = task.TimeAssigned
+			reply.Status = task.Status
+			reply.Type = task.Type
+			reply.NReduce = task.NReduce
+			log.Printf("ASSIGNING TASK #%d TO WORKER\n", reply.TaskID)
+			return nil
+		}
+	}
 	return nil
 }
 
@@ -64,21 +80,26 @@ func MakeMaster(files []string, nReduce int) *Master {
 	m.mapTasks = make(map[int]*Task)
 	m.reduceTasks = make(map[int]*Task)
 
+	log.Println("Generating map tasks...")
 	for id, file := range files {
 		mapTask := Task{}
 		mapTask.Type = MAP
 		mapTask.Filepath = file
 		mapTask.TaskID = id
 		mapTask.Status = NOT_STARTED
+		mapTask.NReduce = m.nReduce
 		m.mapTasks[id] = &mapTask
+		log.Printf("TASK #%d - Type: %v - Status: %v - Filepath: %v\n", mapTask.TaskID, mapTask.Type, mapTask.Status, mapTask.Filepath)
 	}
 
+	log.Println("Initializing reduce tasks...")
 	for id:= 0; id < nReduce; id++ {
 		reduceTask := Task{}
 		reduceTask.Type = REDUCE
 		reduceTask.TaskID = id
 		reduceTask.Status = NOT_STARTED
 		m.reduceTasks[id] = &reduceTask
+		log.Printf("TASK #%d - Type: %v - Status: %v - Filepath: %v\n", reduceTask.TaskID, reduceTask.Type, reduceTask.Status, reduceTask.Filepath)
 	}
 
 	m.server()

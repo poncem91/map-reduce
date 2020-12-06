@@ -36,7 +36,6 @@ func ihash(key string) int {
 //
 func Worker(mapf func(string, string) []KeyValue,
 	reducef func(string, []string) string) {
-
 	for {
 		assignedTask, err := AskForTask()
 
@@ -49,8 +48,7 @@ func Worker(mapf func(string, string) []KeyValue,
 			break
 		}
 
-		log.Println("Assigned task info:")
-		log.Printf("ID: %d\nFilepath: %v\nStatus: %v\nType: %v\n", assignedTask.TaskID, assignedTask.Filepath, assignedTask.Status, assignedTask.Type)
+		log.Printf("RECEIVED TASK # %d - Filepath: %v - Status: %v - Type: %v\n", assignedTask.TaskID, assignedTask.Filepath, assignedTask.Status, assignedTask.Type)
 
 		file, err := os.Open(assignedTask.Filepath)
 		if err != nil {
@@ -65,28 +63,43 @@ func Worker(mapf func(string, string) []KeyValue,
 		if assignedTask.Type == MAP {
 			intermediateKV := mapf(assignedTask.Filepath, string(content))
 			intermediateFiles := make(map[int]*os.File)
+			intermediateFilenames := []string{}
 
+			for i := 0; i < assignedTask.NReduce; i++ {
+				tmpFile, err := ioutil.TempFile("", "mr")
+				if err != nil {
+					log.Fatalln("Failed to create temp file")
+				}
+				intermediateFiles[i] = tmpFile
+				intermediateFilenames = append(intermediateFilenames, tmpFile.Name())
+			}
+
+			fmt.Println(len(intermediateKV))
 			for _, keyValue := range intermediateKV {
 				reduceTaskNum := ihash(keyValue.Key) % assignedTask.NReduce
 				file, ok := intermediateFiles[reduceTaskNum]
 				if !ok {
-					filename := fmt.Sprintf("mr-%d-%d", assignedTask.TaskID, reduceTaskNum)
-					file, err := os.Create(filename)
-					if err != nil {
-						log.Fatal(err)
-					}
-					intermediateFiles[reduceTaskNum] = file
+					log.Fatalln("Failed to load temp file")
 				}
 				enc := json.NewEncoder(file)
 				err := enc.Encode(&keyValue)
 				if err != nil {
+					fmt.Println("fatal error")
 					log.Fatal(err)
 				}
 			}
 
-		} else if assignedTask.Type == REDUCE {
+			for i, file := range intermediateFiles {
+				os.Rename(intermediateFilenames[i], fmt.Sprintf("mr-%d-%d", assignedTask.TaskID, i))
+				intermediateFilenames[i] = fmt.Sprintf("mr-%d-%d", assignedTask.TaskID, i)
+				file.Close()
+			}
 
+			fmt.Println("end of map task ")
+		} else if assignedTask.Type == REDUCE {
+			fmt.Println("lala")
 		}
+
 	}
 
 
