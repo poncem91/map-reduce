@@ -44,23 +44,22 @@ func Worker(mapf func(string, string) []KeyValue,
 		}
 
 		if assignedTask.Status == COMPLETE {
-			log.Println("tasks have all been completed")
+			log.Println("ALL TASKS HAVE BEEN COMPLETED")
 			break
 		}
 
 		log.Printf("RECEIVED TASK # %d - Filepath: %v - Status: %v - Type: %v\n", assignedTask.TaskID, assignedTask.Filepath, assignedTask.Status, assignedTask.Type)
 
-		file, err := os.Open(assignedTask.Filepath)
-		if err != nil {
-			log.Fatalf("cannot open %v", assignedTask.Filepath)
-		}
-		content, err := ioutil.ReadAll(file)
-		if err != nil {
-			log.Fatalf("cannot read %v", assignedTask.Filepath)
-		}
-		file.Close()
-
 		if assignedTask.Type == MAP {
+			file, err := os.Open(assignedTask.Filepath)
+			if err != nil {
+				log.Fatalf("cannot open %v", assignedTask.Filepath)
+			}
+			content, err := ioutil.ReadAll(file)
+			if err != nil {
+				log.Fatalf("cannot read %v", assignedTask.Filepath)
+			}
+			file.Close()
 			intermediateKV := mapf(assignedTask.Filepath, string(content))
 			intermediateFiles := make(map[int]*os.File)
 			intermediateFilenames := []string{}
@@ -95,9 +94,14 @@ func Worker(mapf func(string, string) []KeyValue,
 				file.Close()
 			}
 
-			fmt.Println("end of map task ")
+			assignedTask.Status = COMPLETE
+			reply := Task{}
+			call("Master.UpdateTaskStatus", &assignedTask, &reply)
+
 		} else if assignedTask.Type == REDUCE {
-			fmt.Println("lala")
+			assignedTask.Status = COMPLETE
+			reply := Task{}
+			call("Master.UpdateTaskStatus", &assignedTask, &reply)
 		}
 
 	}
@@ -107,7 +111,7 @@ func Worker(mapf func(string, string) []KeyValue,
 }
 
 func AskForTask() (*Task, error) {
-	args := TaskArgs{}
+	args := Task{}
 	reply := Task{}
 
 	if call("Master.AssignTask", &args, &reply) {

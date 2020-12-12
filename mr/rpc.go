@@ -21,8 +21,6 @@ const (
 )
 
 // Add your RPC definitions here.
-type TaskArgs struct {
-}
 
 type Task struct {
 	Filepath string

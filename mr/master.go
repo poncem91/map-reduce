@@ -19,14 +19,11 @@ type Master struct {
 }
 
 // Your code here -- RPC handlers for the worker to call.
-func (m *Master) AssignTask(args *TaskArgs, reply *Task) error {
-	log.Println("Beginning ASSIGN TASK Process")
+func (m *Master) AssignTask(args *Task, reply *Task) error {
 
 	if m.stage == MAP {
-		tasksRemaining := false
 		for _, task := range m.mapTasks {
 			if task.Status == NOT_STARTED {
-				tasksRemaining = true
 				task.TimeAssigned = time.Now()
 				task.Status = IN_PROGRESS
 				reply.TaskID = task.TaskID
@@ -37,16 +34,11 @@ func (m *Master) AssignTask(args *TaskArgs, reply *Task) error {
 				reply.NReduce = task.NReduce
 				log.Printf("ASSIGNING TO WORKER: TASK #%d - Filepath: %v - Status: %v - Type: %v\n", reply.TaskID, reply.Filepath, reply.Status, reply.Type)
 				return nil
-			}
-			if !tasksRemaining {
-				m.stage = REDUCE
 			}
 		}
 	} else if m.stage == REDUCE {
-		tasksRemaining := false
 		for _, task := range m.reduceTasks {
 			if task.Status == NOT_STARTED {
-				tasksRemaining = true
 				task.TimeAssigned = time.Now()
 				task.Status = IN_PROGRESS
 				reply.TaskID = task.TaskID
@@ -58,13 +50,41 @@ func (m *Master) AssignTask(args *TaskArgs, reply *Task) error {
 				log.Printf("ASSIGNING TO WORKER: TASK #%d - Filepath: %v - Status: %v - Type: %v\n", reply.TaskID, reply.Filepath, reply.Status, reply.Type)
 				return nil
 			}
-		}
-		if !tasksRemaining {
-			m.stage = COMPLETE
 		}
 
 	} else if m.stage == COMPLETE {
 		reply.Status = COMPLETE
+	}
+	return nil
+}
+
+func (m *Master) UpdateTaskStatus(args *Task, reply *Task) error {
+	if args.Status == COMPLETE {
+		if args.Type == MAP {
+			m.mapTasks[args.TaskID].Status = COMPLETE
+			allComplete := true
+			for _, task := range m.mapTasks {
+				if task.Status != COMPLETE {
+					allComplete = false
+				}
+			}
+			if allComplete {
+				log.Println("REDUCE TASKS ALL COMPLETE... SWITCHING TO REDUCE STAGE")
+				m.stage = REDUCE
+			}
+		} else if args.Type == REDUCE {
+			m.reduceTasks[args.TaskID].Status = COMPLETE
+			allComplete := true
+			for _, task := range m.reduceTasks {
+				if task.Status != COMPLETE {
+					allComplete = false
+				}
+			}
+			if allComplete {
+				log.Println("REDUCE TASKS ALL COMPLETE... SWITCHING TO COMPLETE STAGE")
+				m.stage = COMPLETE
+			}
+		}
 	}
 	return nil
 }
