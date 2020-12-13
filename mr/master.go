@@ -111,12 +111,11 @@ func (m *Master) server() {
 // if the entire job has finished.
 //
 func (m *Master) Done() bool {
-	ret := false
-
-	// Your code here.
-
-
-	return ret
+	if m.stage == COMPLETE {
+		log.Println("Tasks complete... quitting.")
+		return true
+	}
+	return false
 }
 
 //
@@ -150,6 +149,7 @@ func MakeMaster(files []string, nReduce int) *Master {
 		reduceTask.Type = REDUCE
 		reduceTask.TaskID = id
 		reduceTask.Status = NOT_STARTED
+		reduceTask.Filepath = "N/A"
 		m.reduceTasks[id] = &reduceTask
 		log.Printf("TASK #%d - Type: %v - Status: %v - Filepath: %v\n", reduceTask.TaskID, reduceTask.Type, reduceTask.Status, reduceTask.Filepath)
 	}

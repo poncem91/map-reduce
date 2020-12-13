@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
+	"sort"
+	"strconv"
 )
 import "log"
 import "net/rpc"
@@ -19,6 +22,14 @@ type KeyValue struct {
 	Key   string
 	Value string
 }
+
+// for sorting by key.
+type ByKey []KeyValue
+
+// for sorting by key.
+func (a ByKey) Len() int           { return len(a) }
+func (a ByKey) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByKey) Less(i, j int) bool { return a[i].Key < a[j].Key }
 
 //
 // use ihash(key) % NReduce to choose the reduce
@@ -96,17 +107,68 @@ func Worker(mapf func(string, string) []KeyValue,
 
 			assignedTask.Status = COMPLETE
 			reply := Task{}
-			call("Master.UpdateTaskStatus", &assignedTask, &reply)
+			if call("Master.UpdateTaskStatus", &assignedTask, &reply){
+				log.Println("call to Master.UpdateTaskStatus was successful")
+			} else {
+				log.Println("master couldn't update task status")
+			}
 
 		} else if assignedTask.Type == REDUCE {
+			filepaths, err := filepath.Glob("mr-*-" + strconv.Itoa(assignedTask.NReduce))
+			if err != nil {
+				log.Fatalln("Failed to find reduce files")
+			}
+
+			intermediateKV := []KeyValue{}
+
+			for _, filepath := range filepaths {
+				file, err := os.Open(filepath)
+				if err != nil {
+					log.Fatalf("cannot open %v", filepath)
+				}
+				dec := json.NewDecoder(file)
+				for {
+					var kv KeyValue
+					if err := dec.Decode(&kv); err != nil {
+						break
+					}
+					intermediateKV = append(intermediateKV, kv)
+				}
+			}
+
+			sort.Sort(ByKey(intermediateKV))
+			ofile, err := ioutil.TempFile("", "mr-out-temp")
+
+			i := 0
+			for i < len(intermediateKV) {
+				j := i + 1
+				for j < len(intermediateKV) && intermediateKV[j].Key == intermediateKV[i].Key {
+					j++
+				}
+				values := []string{}
+				for k := i; k < j; k++ {
+					values = append(values, intermediateKV[k].Value)
+				}
+				output := reducef(intermediateKV[i].Key, values)
+
+				// this is the correct format for each line of Reduce output.
+				fmt.Fprintf(ofile, "%v %v\n", intermediateKV[i].Key, output)
+
+				i = j
+			}
+			ofile.Close()
+			os.Rename("mr-out-temp", fmt.Sprintf("mr-out-%d", assignedTask.TaskID))
+
 			assignedTask.Status = COMPLETE
 			reply := Task{}
-			call("Master.UpdateTaskStatus", &assignedTask, &reply)
+			if call("Master.UpdateTaskStatus", &assignedTask, &reply){
+				log.Println("call to Master.UpdateTaskStatus was successful")
+			} else {
+				log.Println("master couldn't update task status")
+			}
 		}
 
 	}
-
-
 
 }
 
