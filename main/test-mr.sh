@@ -7,7 +7,7 @@
 RACE=
 
 # uncomment this to run the tests with the Go race detector.
-#RACE=-race
+RACE=-race
 
 # run the test in a fresh sub-directory.
 rm -rf mr-tmp
@@ -35,7 +35,7 @@ failed_any=0
 sort mr-out-0 > mr-correct-wc.txt
 rm -f mr-out*
 
-echo '***' Starting wc test.
+echo '\n\n***' Starting wc test.
 
 timeout -k 2s 180s ../mrmaster ../text/pg*txt &
 
@@ -55,7 +55,7 @@ wait
 # the master or a worker has exited. since workers are required
 # to exit when a job is completely finished, and not before,
 # that means the job has finished.
-
+sleep 1
 sort mr-out* | grep . > mr-wc-all
 if cmp mr-wc-all mr-correct-wc.txt
 then
@@ -77,7 +77,7 @@ rm -f mr-*
 sort mr-out-0 > mr-correct-indexer.txt
 rm -f mr-out*
 
-echo '***' Starting indexer test.
+echo '\n\n***' Starting indexer test.
 
 timeout -k 2s 180s ../mrmaster ../text/pg*txt &
 sleep 1
@@ -86,6 +86,7 @@ sleep 1
 timeout -k 2s 180s ../mrworker ../../mrapps/indexer.so &
 timeout -k 2s 180s ../mrworker ../../mrapps/indexer.so
 
+sleep 1
 sort mr-out* | grep . > mr-indexer-all
 if cmp mr-indexer-all mr-correct-indexer.txt
 then
@@ -99,7 +100,7 @@ fi
 wait ; wait
 
 
-echo '***' Starting map parallelism test.
+echo '\n\n***' Starting map parallelism test.
 
 rm -f mr-out* mr-worker*
 
@@ -109,6 +110,7 @@ sleep 1
 timeout -k 2s 180s ../mrworker ../../mrapps/mtiming.so &
 timeout -k 2s 180s ../mrworker ../../mrapps/mtiming.so
 
+sleep 1
 NT=`cat mr-out* | grep '^times-' | wc -l | sed 's/ //g'`
 if [ "$NT" != "2" ]
 then
@@ -129,7 +131,7 @@ fi
 wait ; wait
 
 
-echo '***' Starting reduce parallelism test.
+echo '\n\n***' Starting reduce parallelism test.
 
 rm -f mr-out* mr-worker*
 
@@ -139,6 +141,7 @@ sleep 1
 timeout -k 2s 180s ../mrworker ../../mrapps/rtiming.so &
 timeout -k 2s 180s ../mrworker ../../mrapps/rtiming.so
 
+sleep 1
 NT=`cat mr-out* | grep '^[a-z] 2' | wc -l | sed 's/ //g'`
 if [ "$NT" -lt "2" ]
 then
@@ -157,7 +160,7 @@ wait ; wait
 sort mr-out-0 > mr-correct-crash.txt
 rm -f mr-out*
 
-echo '***' Starting crash test.
+echo '\n\n***' Starting crash test.
 
 rm -f mr-done
 (timeout -k 2s 180s ../mrmaster ../text/pg*txt ; touch mr-done ) &
@@ -191,6 +194,7 @@ wait
 wait
 wait
 
+sleep 1
 rm $SOCKNAME
 sort mr-out* | grep . > mr-crash-all
 if cmp mr-crash-all mr-correct-crash.txt
@@ -202,9 +206,10 @@ else
   failed_any=1
 fi
 
+sleep 1
 if [ $failed_any -eq 0 ]; then
-    echo '***' PASSED ALL TESTS
+    echo '\n\n***' PASSED ALL TESTS
 else
-    echo '***' FAILED SOME TESTS
+    echo '\n\n***' FAILED SOME TESTS
     exit 1
 fi

@@ -2,6 +2,7 @@ package mr
 
 import (
 	"log"
+	"sync"
 	"time"
 )
 import "net"
@@ -16,10 +17,14 @@ type Master struct {
 	mapTasks map[int]*Task // key: taskID
 	reduceTasks map[int]*Task // key: taskID
 	stage string
+	mutex sync.Mutex
 }
 
 // Your code here -- RPC handlers for the worker to call.
 func (m *Master) AssignTask(args *Task, reply *Task) error {
+
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 
 	if m.stage == MAP {
 		for _, task := range m.mapTasks {
@@ -59,6 +64,10 @@ func (m *Master) AssignTask(args *Task, reply *Task) error {
 }
 
 func (m *Master) UpdateTaskStatus(args *Task, reply *Task) error {
+
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
 	if args.Status == COMPLETE {
 		if args.Type == MAP {
 			m.mapTasks[args.TaskID].Status = COMPLETE
@@ -69,7 +78,7 @@ func (m *Master) UpdateTaskStatus(args *Task, reply *Task) error {
 				}
 			}
 			if allComplete {
-				log.Println("REDUCE TASKS ALL COMPLETE... SWITCHING TO REDUCE STAGE")
+				log.Println("MAP TASKS ALL COMPLETE... SWITCHING TO REDUCE STAGE")
 				m.stage = REDUCE
 			}
 		} else if args.Type == REDUCE {
@@ -111,6 +120,9 @@ func (m *Master) server() {
 // if the entire job has finished.
 //
 func (m *Master) Done() bool {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
 	if m.stage == COMPLETE {
 		log.Println("Tasks complete... quitting.")
 		return true

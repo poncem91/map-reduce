@@ -106,7 +106,7 @@ func Worker(mapf func(string, string) []KeyValue,
 			assignedTask.Status = COMPLETE
 			reply := Task{}
 			if call("Master.UpdateTaskStatus", &assignedTask, &reply){
-				log.Println("call to Master.UpdateTaskStatus was successful")
+				//log.Println("call to Master.UpdateTaskStatus was successful")
 			} else {
 				log.Println("master couldn't update task status")
 			}
@@ -161,7 +161,7 @@ func Worker(mapf func(string, string) []KeyValue,
 			assignedTask.Status = COMPLETE
 			reply := Task{}
 			if call("Master.UpdateTaskStatus", &assignedTask, &reply){
-				log.Println("call to Master.UpdateTaskStatus was successful")
+				//log.Println("call to Master.UpdateTaskStatus was successful")
 			} else {
 				log.Println("master couldn't update task status")
 			}
@@ -176,7 +176,7 @@ func AskForTask() (*Task, error) {
 	reply := Task{}
 
 	if call("Master.AssignTask", &args, &reply) {
-		log.Println("call to Master.AssignTask was successful")
+		//log.Println("call to Master.AssignTask was successful")
 		return &reply, nil
 	} else {
 		return nil, errors.New("master couldn't assign task")
