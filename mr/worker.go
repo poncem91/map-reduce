@@ -59,9 +59,8 @@ func Worker(mapf func(string, string) []KeyValue,
 			break
 		}
 
-		log.Printf("RECEIVED TASK # %d - Filepath: %v - Status: %v - Type: %v\n", assignedTask.TaskID, assignedTask.Filepath, assignedTask.Status, assignedTask.Type)
-
 		if assignedTask.Type == MAP {
+			log.Printf("RECEIVED TASK # %d - Filepath: %v - Status: %v - Type: %v\n", assignedTask.TaskID, assignedTask.Filepath, assignedTask.Status, assignedTask.Type)
 			file, err := os.Open(assignedTask.Filepath)
 			if err != nil {
 				log.Fatalf("cannot open %v", assignedTask.Filepath)
@@ -84,7 +83,6 @@ func Worker(mapf func(string, string) []KeyValue,
 				intermediateFilenames = append(intermediateFilenames, tmpFile.Name())
 			}
 
-			fmt.Println(len(intermediateKV))
 			for _, keyValue := range intermediateKV {
 				reduceTaskNum := ihash(keyValue.Key) % assignedTask.NReduce
 				file, ok := intermediateFiles[reduceTaskNum]
@@ -99,7 +97,7 @@ func Worker(mapf func(string, string) []KeyValue,
 				}
 			}
 
-			for i, file := range intermediateFiles {
+			for i := 0; i < assignedTask.NReduce; i++ {
 				os.Rename(intermediateFilenames[i], fmt.Sprintf("mr-%d-%d", assignedTask.TaskID, i))
 				intermediateFilenames[i] = fmt.Sprintf("mr-%d-%d", assignedTask.TaskID, i)
 				file.Close()
@@ -114,17 +112,17 @@ func Worker(mapf func(string, string) []KeyValue,
 			}
 
 		} else if assignedTask.Type == REDUCE {
-			filepaths, err := filepath.Glob("mr-*-" + strconv.Itoa(assignedTask.NReduce))
+			log.Printf("RECEIVED TASK # %d - Filepath: %v - Status: %v - Type: %v\n", assignedTask.TaskID, assignedTask.Filepath, assignedTask.Status, assignedTask.Type)
+			filepaths, err := filepath.Glob("mr-*-" + strconv.Itoa(assignedTask.TaskID))
 			if err != nil {
 				log.Fatalln("Failed to find reduce files")
 			}
-
 			intermediateKV := []KeyValue{}
 
-			for _, filepath := range filepaths {
-				file, err := os.Open(filepath)
+			for _, filePath := range filepaths {
+				file, err := os.Open(filePath)
 				if err != nil {
-					log.Fatalf("cannot open %v", filepath)
+					log.Fatalf("cannot open %v", filePath)
 				}
 				dec := json.NewDecoder(file)
 				for {
@@ -137,7 +135,7 @@ func Worker(mapf func(string, string) []KeyValue,
 			}
 
 			sort.Sort(ByKey(intermediateKV))
-			ofile, err := ioutil.TempFile("", "mr-out-temp")
+			outfile, err := ioutil.TempFile("", "mr-out-temp")
 
 			i := 0
 			for i < len(intermediateKV) {
@@ -152,12 +150,13 @@ func Worker(mapf func(string, string) []KeyValue,
 				output := reducef(intermediateKV[i].Key, values)
 
 				// this is the correct format for each line of Reduce output.
-				fmt.Fprintf(ofile, "%v %v\n", intermediateKV[i].Key, output)
+				fmt.Fprintf(outfile, "%v %v\n", intermediateKV[i].Key, output)
 
 				i = j
 			}
-			ofile.Close()
-			os.Rename("mr-out-temp", fmt.Sprintf("mr-out-%d", assignedTask.TaskID))
+			outfilename := outfile.Name()
+			outfile.Close()
+			os.Rename(outfilename, fmt.Sprintf("mr-out-%d", assignedTask.TaskID))
 
 			assignedTask.Status = COMPLETE
 			reply := Task{}
