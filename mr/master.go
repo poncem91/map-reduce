@@ -18,6 +18,8 @@ type Master struct {
 	reduceTasks map[int]*Task // key: taskID
 	stage string
 	mutex sync.Mutex
+	timeout time.Duration
+	wg sync.WaitGroup
 }
 
 // Your code here -- RPC handlers for the worker to call.
@@ -98,6 +100,27 @@ func (m *Master) UpdateTaskStatus(args *Task, reply *Task) error {
 	return nil
 }
 
+func (m *Master) checkTaskProgress() {
+	defer m.mutex.Unlock()
+	for {
+		m.mutex.Lock()
+		if m.stage == COMPLETE {
+			break
+		}
+		for _, task := range m.mapTasks {
+			if task.Status == IN_PROGRESS && task.TimeAssigned.Add(m.timeout).After(time.Now()) {
+				task.Status = NOT_STARTED
+			}
+		}
+		for _, task := range m.reduceTasks {
+			if task.Status == IN_PROGRESS && task.TimeAssigned.Add(m.timeout).After(time.Now()) {
+				task.Status = NOT_STARTED
+			}
+		}
+		m.mutex.Unlock()
+	}
+	m.wg.Done()
+}
 
 //
 // start a thread that listens for RPCs from worker.go
@@ -142,6 +165,7 @@ func MakeMaster(files []string, nReduce int) *Master {
 	m.stage = MAP
 	m.mapTasks = make(map[int]*Task)
 	m.reduceTasks = make(map[int]*Task)
+	m.timeout = 10 * time.Second
 
 	log.Println("Generating map tasks...")
 	for id, file := range files {
@@ -167,5 +191,8 @@ func MakeMaster(files []string, nReduce int) *Master {
 	}
 
 	m.server()
+
+	m.wg.Add(1)
+	go m.checkTaskProgress()
 	return &m
 }
