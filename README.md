@@ -23,8 +23,12 @@ cd main
 go run mrworker.go wc.so
 ```
 
-Once the tasks are all done, the output will be in `mr-out-*`
+Once the tasks are all done, the output will be in `mr-out-*` and the sorted union of the output files can be observed by executing:
+```
+cat mr-out-* | sort | more
+```
 
+### Test Script
 To run the test script:
 ```
 cd main
