@@ -22,7 +22,8 @@ type Master struct {
 	wg sync.WaitGroup
 }
 
-// Your code here -- RPC handlers for the worker to call.
+// AssignTask RPC handler for the worker to call.
+// Assigns task to worker
 func (m *Master) AssignTask(args *Task, reply *Task) error {
 
 	m.mutex.Lock()
@@ -65,6 +66,8 @@ func (m *Master) AssignTask(args *Task, reply *Task) error {
 	return nil
 }
 
+// UpdateTaskStatus RPC handler for the worker to call.
+// Updates the status of tasks once completed by a worker
 func (m *Master) UpdateTaskStatus(args *Task, reply *Task) error {
 
 	m.mutex.Lock()
@@ -100,6 +103,7 @@ func (m *Master) UpdateTaskStatus(args *Task, reply *Task) error {
 	return nil
 }
 
+// checks if task progress has idled longer than timeout
 func (m *Master) checkTaskProgress() {
 	defer m.mutex.Unlock()
 	for {
@@ -179,7 +183,7 @@ func MakeMaster(files []string, nReduce int) *Master {
 		log.Printf("TASK #%d - Type: %v - Status: %v - Filepath: %v\n", mapTask.TaskID, mapTask.Type, mapTask.Status, mapTask.Filepath)
 	}
 
-	log.Println("Initializing reduce tasks...")
+	log.Println("Generating reduce tasks...")
 	for id:= 0; id < nReduce; id++ {
 		reduceTask := Task{}
 		reduceTask.Type = REDUCE
@@ -192,6 +196,7 @@ func MakeMaster(files []string, nReduce int) *Master {
 
 	m.server()
 
+	// runs a thread to check for tasks' progress in case of idle or crashed workers
 	m.wg.Add(1)
 	go m.checkTaskProgress()
 	return &m

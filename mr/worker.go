@@ -47,18 +47,16 @@ func ihash(key string) int {
 //
 func Worker(mapf func(string, string) []KeyValue,
 	reducef func(string, []string) string) {
+
 	for {
 		assignedTask, err := AskForTask()
-
 		if err != nil {
 			log.Panicln("worker could not retrieve task from master")
 		}
-
 		if assignedTask.Status == COMPLETE {
 			log.Println("ALL TASKS HAVE BEEN COMPLETED")
 			break
 		}
-
 		if assignedTask.Type == MAP {
 			log.Printf("RECEIVED TASK # %d - Filepath: %v - Status: %v - Type: %v\n", assignedTask.TaskID, assignedTask.Filepath, assignedTask.Status, assignedTask.Type)
 			file, err := os.Open(assignedTask.Filepath)
@@ -74,6 +72,7 @@ func Worker(mapf func(string, string) []KeyValue,
 			intermediateFiles := make(map[int]*os.File)
 			intermediateFilenames := []string{}
 
+			// creates nReduce temporary files
 			for i := 0; i < assignedTask.NReduce; i++ {
 				tmpFile, err := ioutil.TempFile("", "mr")
 				if err != nil {
@@ -83,6 +82,7 @@ func Worker(mapf func(string, string) []KeyValue,
 				intermediateFilenames = append(intermediateFilenames, tmpFile.Name())
 			}
 
+			// encodes keyValue's distributed among nReduce files
 			for _, keyValue := range intermediateKV {
 				reduceTaskNum := ihash(keyValue.Key) % assignedTask.NReduce
 				file, ok := intermediateFiles[reduceTaskNum]
@@ -97,28 +97,30 @@ func Worker(mapf func(string, string) []KeyValue,
 				}
 			}
 
+			// renames files with format "mr-taskID-NReduceBucket"
 			for i := 0; i < assignedTask.NReduce; i++ {
 				os.Rename(intermediateFilenames[i], fmt.Sprintf("mr-%d-%d", assignedTask.TaskID, i))
 				intermediateFilenames[i] = fmt.Sprintf("mr-%d-%d", assignedTask.TaskID, i)
 				file.Close()
 			}
 
+			// updates master of task status update
 			assignedTask.Status = COMPLETE
 			reply := Task{}
-			if call("Master.UpdateTaskStatus", &assignedTask, &reply){
-				//log.Println("call to Master.UpdateTaskStatus was successful")
-			} else {
+			if !call("Master.UpdateTaskStatus", &assignedTask, &reply) {
 				log.Println("master couldn't update task status")
 			}
 
 		} else if assignedTask.Type == REDUCE {
 			log.Printf("RECEIVED TASK # %d - Filepath: %v - Status: %v - Type: %v\n", assignedTask.TaskID, assignedTask.Filepath, assignedTask.Status, assignedTask.Type)
+			// retrieves filepaths matching string
 			filepaths, err := filepath.Glob("mr-*-" + strconv.Itoa(assignedTask.TaskID))
 			if err != nil {
 				log.Fatalln("Failed to find reduce files")
 			}
 			intermediateKV := []KeyValue{}
 
+			// retrieves and appends each keyValue from each file from the filepaths and stores it
 			for _, filePath := range filepaths {
 				file, err := os.Open(filePath)
 				if err != nil {
@@ -137,6 +139,7 @@ func Worker(mapf func(string, string) []KeyValue,
 			sort.Sort(ByKey(intermediateKV))
 			outfile, err := ioutil.TempFile("", "mr-out-temp")
 
+			// reduces keyValue and writes reduced result to output file
 			i := 0
 			for i < len(intermediateKV) {
 				j := i + 1
@@ -154,15 +157,15 @@ func Worker(mapf func(string, string) []KeyValue,
 
 				i = j
 			}
+			// renames file to match format "mr-out-taskID"
 			outfilename := outfile.Name()
 			outfile.Close()
 			os.Rename(outfilename, fmt.Sprintf("mr-out-%d", assignedTask.TaskID))
 
+			// updates master of task status update
 			assignedTask.Status = COMPLETE
 			reply := Task{}
-			if call("Master.UpdateTaskStatus", &assignedTask, &reply){
-				//log.Println("call to Master.UpdateTaskStatus was successful")
-			} else {
+			if !call("Master.UpdateTaskStatus", &assignedTask, &reply) {
 				log.Println("master couldn't update task status")
 			}
 		}
@@ -171,12 +174,12 @@ func Worker(mapf func(string, string) []KeyValue,
 
 }
 
+// function that calls Master.AssignTask to get a task assignment
 func AskForTask() (*Task, error) {
 	args := Task{}
 	reply := Task{}
 
 	if call("Master.AssignTask", &args, &reply) {
-		//log.Println("call to Master.AssignTask was successful")
 		return &reply, nil
 	} else {
 		return nil, errors.New("master couldn't assign task")
