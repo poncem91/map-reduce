@@ -34,3 +34,7 @@ To run the test script:
 cd main
 sh test-mr.sh
 ```
+
+### Acknowledgement
+My work is in `/mr/worker.go` and `/mr/master.go`. Every other file was provided by MIT's 6.824 course.
+
