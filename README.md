@@ -36,5 +36,5 @@ sh test-mr.sh
 ```
 
 ### Acknowledgement
-My work is in `/mr/worker.go` and `/mr/master.go`. Every other file was provided by MIT's 6.824 course.
+My work is in the `/mr` directory. Every other file was provided by MIT's 6.824 course.
 
