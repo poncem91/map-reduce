@@ -3,8 +3,6 @@ package mr
 //
 // RPC definitions.
 //
-// remember to capitalize all names.
-//
 
 import (
 	"os"
@@ -20,8 +18,6 @@ const (
 	COMPLETE = "COMPLETE"
 )
 
-// Add your RPC definitions here.
-
 type Task struct {
 	Filepath string
 	Status string
@@ -31,6 +27,7 @@ type Task struct {
 	TaskID int
 }
 
+// 'masterSock' function provided in starter code:
 // Cook up a unique-ish UNIX-domain socket name
 // in /var/tmp, for the master.
 // Can't use the current directory since

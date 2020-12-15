@@ -32,6 +32,7 @@ func (a ByKey) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByKey) Less(i, j int) bool { return a[i].Key < a[j].Key }
 
 //
+// 'ihash' function provided in starter code:
 // use ihash(key) % NReduce to choose the reduce
 // task number for each KeyValue emitted by Map.
 //
@@ -187,6 +188,7 @@ func AskForTask() (*Task, error) {
 }
 
 //
+// 'call' function provided in starter code:
 // send an RPC request to the master, wait for the response.
 // usually returns true.
 // returns false if something goes wrong.

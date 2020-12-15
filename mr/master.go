@@ -12,7 +12,6 @@ import "net/http"
 
 
 type Master struct {
-	// Your definitions here.
 	nReduce int
 	mapTasks map[int]*Task // key: taskID
 	reduceTasks map[int]*Task // key: taskID
@@ -127,6 +126,7 @@ func (m *Master) checkTaskProgress() {
 }
 
 //
+// 'server' function provided in starter code:
 // start a thread that listens for RPCs from worker.go
 //
 func (m *Master) server() {
