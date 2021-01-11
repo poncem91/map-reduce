@@ -3,16 +3,6 @@ mrtmp.*
 824-mrinput-*.txt
 /main/diff.out
 /mapreduce/x.txt
-/pbservice/x.txt
-/kvpaxos/x.txt
-/kvraft
-/labgob
-/labrpc
-/models
-/porcupine
-/raft
-/shardkv
-/shardmaster
 /main/diskvd.go
 /main/lockc.go
 /main/lockd.go
