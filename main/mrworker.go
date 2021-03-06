@@ -3,7 +3,7 @@ package main
 //
 // start a worker process, which is implemented
 // in ../mr/worker.go. typically there will be
-// multiple worker processes, talking to one master.
+// multiple worker processes, talking to one coordinator.
 //
 // go run mrworker.go wc.so
 //

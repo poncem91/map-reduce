@@ -11,7 +11,7 @@ import "net/rpc"
 import "net/http"
 
 
-type Master struct {
+type Coordinator struct {
 	nReduce int
 	mapTasks map[int]*Task // key: taskID
 	reduceTasks map[int]*Task // key: taskID
@@ -23,13 +23,13 @@ type Master struct {
 
 // AssignTask RPC handler for the worker to call.
 // Assigns task to worker
-func (m *Master) AssignTask(args *Task, reply *Task) error {
+func (c *Coordinator) AssignTask(args *Task, reply *Task) error {
 
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 
-	if m.stage == MAP {
-		for _, task := range m.mapTasks {
+	if c.stage == MAP {
+		for _, task := range c.mapTasks {
 			if task.Status == NOT_STARTED {
 				task.TimeAssigned = time.Now()
 				task.Status = IN_PROGRESS
@@ -43,8 +43,8 @@ func (m *Master) AssignTask(args *Task, reply *Task) error {
 				return nil
 			}
 		}
-	} else if m.stage == REDUCE {
-		for _, task := range m.reduceTasks {
+	} else if c.stage == REDUCE {
+		for _, task := range c.reduceTasks {
 			if task.Status == NOT_STARTED {
 				task.TimeAssigned = time.Now()
 				task.Status = IN_PROGRESS
@@ -59,7 +59,7 @@ func (m *Master) AssignTask(args *Task, reply *Task) error {
 			}
 		}
 
-	} else if m.stage == COMPLETE {
+	} else if c.stage == COMPLETE {
 		reply.Status = COMPLETE
 	}
 	return nil
@@ -67,35 +67,35 @@ func (m *Master) AssignTask(args *Task, reply *Task) error {
 
 // UpdateTaskStatus RPC handler for the worker to call.
 // Updates the status of tasks once completed by a worker
-func (m *Master) UpdateTaskStatus(args *Task, reply *Task) error {
+func (c *Coordinator) UpdateTaskStatus(args *Task, reply *Task) error {
 
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 
 	if args.Status == COMPLETE {
 		if args.Type == MAP {
-			m.mapTasks[args.TaskID].Status = COMPLETE
+			c.mapTasks[args.TaskID].Status = COMPLETE
 			allComplete := true
-			for _, task := range m.mapTasks {
+			for _, task := range c.mapTasks {
 				if task.Status != COMPLETE {
 					allComplete = false
 				}
 			}
 			if allComplete {
 				log.Println("MAP TASKS ALL COMPLETE... SWITCHING TO REDUCE STAGE")
-				m.stage = REDUCE
+				c.stage = REDUCE
 			}
 		} else if args.Type == REDUCE {
-			m.reduceTasks[args.TaskID].Status = COMPLETE
+			c.reduceTasks[args.TaskID].Status = COMPLETE
 			allComplete := true
-			for _, task := range m.reduceTasks {
+			for _, task := range c.reduceTasks {
 				if task.Status != COMPLETE {
 					allComplete = false
 				}
 			}
 			if allComplete {
 				log.Println("REDUCE TASKS ALL COMPLETE... SWITCHING TO COMPLETE STAGE")
-				m.stage = COMPLETE
+				c.stage = COMPLETE
 			}
 		}
 	}
@@ -103,37 +103,37 @@ func (m *Master) UpdateTaskStatus(args *Task, reply *Task) error {
 }
 
 // checks if task progress has idled longer than timeout
-func (m *Master) checkTaskProgress() {
-	defer m.mutex.Unlock()
+func (c *Coordinator) checkTaskProgress() {
+	defer c.mutex.Unlock()
 	for {
-		m.mutex.Lock()
-		if m.stage == COMPLETE {
+		c.mutex.Lock()
+		if c.stage == COMPLETE {
 			break
 		}
-		for _, task := range m.mapTasks {
-			if task.Status == IN_PROGRESS && task.TimeAssigned.Add(m.timeout).After(time.Now()) {
+		for _, task := range c.mapTasks {
+			if task.Status == IN_PROGRESS && task.TimeAssigned.Add(c.timeout).After(time.Now()) {
 				task.Status = NOT_STARTED
 			}
 		}
-		for _, task := range m.reduceTasks {
-			if task.Status == IN_PROGRESS && task.TimeAssigned.Add(m.timeout).After(time.Now()) {
+		for _, task := range c.reduceTasks {
+			if task.Status == IN_PROGRESS && task.TimeAssigned.Add(c.timeout).After(time.Now()) {
 				task.Status = NOT_STARTED
 			}
 		}
-		m.mutex.Unlock()
+		c.mutex.Unlock()
 	}
-	m.wg.Done()
+	c.wg.Done()
 }
 
 //
 // 'server' function provided in starter code:
 // start a thread that listens for RPCs from worker.go
 //
-func (m *Master) server() {
-	rpc.Register(m)
+func (c *Coordinator) server() {
+	rpc.Register(c)
 	rpc.HandleHTTP()
 	//l, e := net.Listen("tcp", ":1234")
-	sockname := masterSock()
+	sockname := coordinatorSock()
 	os.Remove(sockname)
 	l, e := net.Listen("unix", sockname)
 	if e != nil {
@@ -143,14 +143,14 @@ func (m *Master) server() {
 }
 
 //
-// main/mrmaster.go calls Done() periodically to find out
+// main/mrcoordinator.go calls Done() periodically to find out
 // if the entire job has finished.
 //
-func (m *Master) Done() bool {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+func (c *Coordinator) Done() bool {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 
-	if m.stage == COMPLETE {
+	if c.stage == COMPLETE {
 		log.Println("Tasks complete... quitting.")
 		return true
 	}
@@ -158,18 +158,18 @@ func (m *Master) Done() bool {
 }
 
 //
-// create a Master.
-// main/mrmaster.go calls this function.
+// create a coordinator.
+// main/mrcoordinator.go calls this function.
 // nReduce is the number of reduce tasks to use.
 //
-func MakeMaster(files []string, nReduce int) *Master {
-	m := Master{}
+func MakeCoordinator(files []string, nReduce int) *Coordinator {
+	c := Coordinator{}
 
-	m.nReduce = nReduce
-	m.stage = MAP
-	m.mapTasks = make(map[int]*Task)
-	m.reduceTasks = make(map[int]*Task)
-	m.timeout = 10 * time.Second
+	c.nReduce = nReduce
+	c.stage = MAP
+	c.mapTasks = make(map[int]*Task)
+	c.reduceTasks = make(map[int]*Task)
+	c.timeout = 10 * time.Second
 
 	log.Println("Generating map tasks...")
 	for id, file := range files {
@@ -178,8 +178,8 @@ func MakeMaster(files []string, nReduce int) *Master {
 		mapTask.Filepath = file
 		mapTask.TaskID = id
 		mapTask.Status = NOT_STARTED
-		mapTask.NReduce = m.nReduce
-		m.mapTasks[id] = &mapTask
+		mapTask.NReduce = c.nReduce
+		c.mapTasks[id] = &mapTask
 		log.Printf("TASK #%d - Type: %v - Status: %v - Filepath: %v\n", mapTask.TaskID, mapTask.Type, mapTask.Status, mapTask.Filepath)
 	}
 
@@ -190,14 +190,14 @@ func MakeMaster(files []string, nReduce int) *Master {
 		reduceTask.TaskID = id
 		reduceTask.Status = NOT_STARTED
 		reduceTask.Filepath = "N/A"
-		m.reduceTasks[id] = &reduceTask
+		c.reduceTasks[id] = &reduceTask
 		log.Printf("TASK #%d - Type: %v - Status: %v - Filepath: %v\n", reduceTask.TaskID, reduceTask.Type, reduceTask.Status, reduceTask.Filepath)
 	}
 
-	m.server()
+	c.server()
 
 	// runs a thread to check for tasks' progress in case of idle or crashed workers
-	m.wg.Add(1)
-	go m.checkTaskProgress()
-	return &m
+	c.wg.Add(1)
+	go c.checkTaskProgress()
+	return &c
 }

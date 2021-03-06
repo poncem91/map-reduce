@@ -52,7 +52,7 @@ func Worker(mapf func(string, string) []KeyValue,
 	for {
 		assignedTask, err := AskForTask()
 		if err != nil {
-			log.Panicln("worker could not retrieve task from master")
+			log.Panicln("worker could not retrieve task from coordinator")
 		}
 		if assignedTask.Status == COMPLETE {
 			log.Println("ALL TASKS HAVE BEEN COMPLETED")
@@ -105,11 +105,11 @@ func Worker(mapf func(string, string) []KeyValue,
 				file.Close()
 			}
 
-			// updates master of task status update
+			// updates coordinator of task status update
 			assignedTask.Status = COMPLETE
 			reply := Task{}
-			if !call("Master.UpdateTaskStatus", &assignedTask, &reply) {
-				log.Println("master couldn't update task status")
+			if !call("Coordinator.UpdateTaskStatus", &assignedTask, &reply) {
+				log.Println("coordinator couldn't update task status")
 			}
 
 		} else if assignedTask.Type == REDUCE {
@@ -163,11 +163,11 @@ func Worker(mapf func(string, string) []KeyValue,
 			outfile.Close()
 			os.Rename(outfilename, fmt.Sprintf("mr-out-%d", assignedTask.TaskID))
 
-			// updates master of task status update
+			// updates coordinator of task status update
 			assignedTask.Status = COMPLETE
 			reply := Task{}
-			if !call("Master.UpdateTaskStatus", &assignedTask, &reply) {
-				log.Println("master couldn't update task status")
+			if !call("Coordinator.UpdateTaskStatus", &assignedTask, &reply) {
+				log.Println("coordinator couldn't update task status")
 			}
 		}
 
@@ -175,27 +175,27 @@ func Worker(mapf func(string, string) []KeyValue,
 
 }
 
-// function that calls Master.AssignTask to get a task assignment
+// function that calls Coordinator.AssignTask to get a task assignment
 func AskForTask() (*Task, error) {
 	args := Task{}
 	reply := Task{}
 
-	if call("Master.AssignTask", &args, &reply) {
+	if call("Coordinator.AssignTask", &args, &reply) {
 		return &reply, nil
 	} else {
-		return nil, errors.New("master couldn't assign task")
+		return nil, errors.New("coordinator couldn't assign task")
 	}
 }
 
 //
 // 'call' function provided in starter code:
-// send an RPC request to the master, wait for the response.
+// send an RPC request to the coordinator, wait for the response.
 // usually returns true.
 // returns false if something goes wrong.
 //
 func call(rpcname string, args interface{}, reply interface{}) bool {
 	// c, err := rpc.DialHTTP("tcp", "127.0.0.1"+":1234")
-	sockname := masterSock()
+	sockname := coordinatorSock()
 	c, err := rpc.DialHTTP("unix", sockname)
 	if err != nil {
 		log.Fatal("dialing:", err)

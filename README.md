@@ -11,10 +11,10 @@ go build -builmode=plugin ../mrapps/wc.go
 rm mr-*
 ```
 
-Then in one terminal run the master:
+Then in one terminal run the coordinator:
 ```
 cd main
-go run mrmaster.go text/pg-*.txt
+go run mrcoordinator.go text/pg-*.txt
 ```
 
 And in different terminals run the workers:

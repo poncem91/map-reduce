@@ -1,10 +1,10 @@
 package main
 
 //
-// start the master process, which is implemented
-// in ../mr/master.go
+// start the coordinator process, which is implemented
+// in ../mr/coordinator.go
 //
-// go run mrmaster.go pg*.txt
+// go run mrcoordinator.go pg*.txt
 //
 // Please do not change this file.
 //
@@ -16,11 +16,11 @@ import "fmt"
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintf(os.Stderr, "Usage: mrmaster inputfiles...\n")
+		fmt.Fprintf(os.Stderr, "Usage: mrcoordinator inputfiles...\n")
 		os.Exit(1)
 	}
 
-	m := mr.MakeMaster(os.Args[1:], 10)
+	m := mr.MakeCoordinator(os.Args[1:], 10)
 	for m.Done() == false {
 		time.Sleep(time.Second)
 	}

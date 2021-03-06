@@ -27,12 +27,12 @@ type Task struct {
 	TaskID int
 }
 
-// 'masterSock' function provided in starter code:
+// 'coordinatorSock' function provided in starter code:
 // Cook up a unique-ish UNIX-domain socket name
 // in /var/tmp, for the master.
 // Can't use the current directory since
 // Athena AFS doesn't support UNIX-domain sockets.
-func masterSock() string {
+func coordinatorSock() string {
 	s := "/var/tmp/824-mr-"
 	s += strconv.Itoa(os.Getuid())
 	return s

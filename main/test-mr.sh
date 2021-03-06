@@ -22,7 +22,7 @@ rm -f mr-*
 (cd ../../mrapps && go build $RACE -buildmode=plugin rtiming.go) || exit 1
 (cd ../../mrapps && go build $RACE -buildmode=plugin crash.go) || exit 1
 (cd ../../mrapps && go build $RACE -buildmode=plugin nocrash.go) || exit 1
-(cd .. && go build $RACE mrmaster.go) || exit 1
+(cd .. && go build $RACE mrcoordinator.go) || exit 1
 (cd .. && go build $RACE mrworker.go) || exit 1
 (cd .. && go build $RACE mrsequential.go) || exit 1
 
@@ -37,9 +37,9 @@ rm -f mr-out*
 
 echo '\n\n***' Starting wc test.
 
-timeout -k 2s 180s ../mrmaster ../text/pg*txt &
+timeout -k 2s 180s ../mrcoordinator ../text/pg*txt &
 
-# give the master time to create the sockets.
+# give the coordinator time to create the sockets.
 sleep 1
 
 # start multiple workers.
@@ -49,10 +49,10 @@ timeout -k 2s 180s ../mrworker ../../mrapps/wc.so &
 
 # wait for one of the processes to exit.
 # under bash, this waits for all processes,
-# including the master.
+# including the coordinator.
 wait
 
-# the master or a worker has exited. since workers are required
+# the coordinator or a worker has exited. since workers are required
 # to exit when a job is completely finished, and not before,
 # that means the job has finished.
 sleep 1
@@ -66,7 +66,7 @@ else
   failed_any=1
 fi
 
-# wait for remaining workers and master to exit.
+# wait for remaining workers and coordinator to exit.
 wait ; wait ; wait
 
 # now indexer
@@ -79,7 +79,7 @@ rm -f mr-out*
 
 echo '\n\n***' Starting indexer test.
 
-timeout -k 2s 180s ../mrmaster ../text/pg*txt &
+timeout -k 2s 180s ../mrcoordinator ../text/pg*txt &
 sleep 1
 
 # start multiple workers
@@ -104,7 +104,7 @@ echo '\n\n***' Starting map parallelism test.
 
 rm -f mr-out* mr-worker*
 
-timeout -k 2s 180s ../mrmaster ../text/pg*txt &
+timeout -k 2s 180s ../mrcoordinator ../text/pg*txt &
 sleep 1
 
 timeout -k 2s 180s ../mrworker ../../mrapps/mtiming.so &
@@ -135,7 +135,7 @@ echo '\n\n***' Starting reduce parallelism test.
 
 rm -f mr-out* mr-worker*
 
-timeout -k 2s 180s ../mrmaster ../text/pg*txt &
+timeout -k 2s 180s ../mrcoordinator ../text/pg*txt &
 sleep 1
 
 timeout -k 2s 180s ../mrworker ../../mrapps/rtiming.so &
@@ -163,13 +163,13 @@ rm -f mr-out*
 echo '\n\n***' Starting crash test.
 
 rm -f mr-done
-(timeout -k 2s 180s ../mrmaster ../text/pg*txt ; touch mr-done ) &
+(timeout -k 2s 180s ../mrcoordinator ../text/pg*txt ; touch mr-done ) &
 sleep 1
 
 # start multiple workers
 timeout -k 2s 180s ../mrworker ../../mrapps/crash.so &
 
-# mimic rpc.go's masterSock()
+# mimic rpc.go's coordinatorSock()
 SOCKNAME=/var/tmp/824-mr-`id -u`
 
 ( while [ -e $SOCKNAME -a ! -f mr-done ]
