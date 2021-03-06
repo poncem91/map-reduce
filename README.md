@@ -7,20 +7,20 @@ For example, to run sample WordCount application with my MapReduce implementatio
 
 ```
 cd main
-go build -builmode=plugin ../mrapps/wc.go
+go build -race -buildmode=plugin ../mrapps/wc.go
 rm mr-*
 ```
 
 Then in one terminal run the coordinator:
 ```
 cd main
-go run mrcoordinator.go text/pg-*.txt
+go run -race mrcoordinator.go text/pg-*.txt
 ```
 
 And in different terminals run the workers:
 ```
 cd main
-go run mrworker.go wc.so
+go run -race mrworker.go wc.so
 ```
 
 Once the tasks are all done, the output will be in `mr-out-*` and the sorted union of the output files can be observed by executing:
